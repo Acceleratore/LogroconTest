@@ -28,8 +28,20 @@ namespace LogroconTest.Models
         /// Id должности
         /// </summary>
         public int ID { get; set; } = -1;
+
+        public PostData()
+        {
+
+        }
+
+        public PostData(PostDataIn _post)
+        {
+            this.PostsName = _post.PostsName;
+            this.Grade     = _post.Grade;
+        }
+
     }
-    
+
     /// <summary>
     /// Данные сотрудника для создания
     /// </summary>
@@ -66,6 +78,21 @@ namespace LogroconTest.Models
     /// </summary>
     public class OfficerData : OfficerDataIn
     {
+
+        public OfficerData()
+        {
+
+        }
+
+        public OfficerData(OfficerDataIn _officer)
+        {
+            this.Name       = _officer.Name;
+            this.SurName    = _officer.SurName;
+            this.Patronymic = _officer.Patronymic;
+            this.BirthDate  = _officer.BirthDate;
+            this.Posts      = _officer.Posts;
+        }
+
         /// <summary>
         /// Id сотрудника
         /// </summary>

@@ -39,7 +39,13 @@ namespace LogroconTest
                 var mainBD = new DBSettings();
                 Configuration.GetSection("MainDBSetting").Bind(mainBD);
                 option.MainDBConnection = mainBD;
+
+                option.ChachedEmployee = Configuration.GetSection("Chached").GetValue<bool>("Employee");
+                option.ChachedPosts    = Configuration.GetSection("Chached").GetValue<bool>("Post");
+
             });
+
+            services.AddSingleton<ICacheStore>(new CacheStore(Configuration.GetSection("Chached").GetValue<bool>("Employee"), Configuration.GetSection("Chached").GetValue<bool>("Post")));
 
             services.AddSwaggerGen(c =>
             {

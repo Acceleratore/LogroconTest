@@ -11,6 +11,10 @@ namespace LogroconTest.Helpers
     {
         public DBSettings MainDBConnection { get; set; }
 
+        public bool ChachedEmployee { get; set; }
+
+        public bool ChachedPosts { get; set; }
+
         public Settings()
         {
 

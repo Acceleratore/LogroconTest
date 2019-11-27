@@ -17,9 +17,9 @@ namespace LogroconTest.Controllers
     {
         ModelDataBase workdb;
 
-        public EmployeeController(IOptions<Settings> setting)
+        public EmployeeController(IOptions<Settings> setting, ICacheStore cache)
         {
-            workdb = new ModelDataBase(setting);
+            workdb = new ModelDataBase(setting, cache);
         }
         
         /// <summary>
@@ -54,15 +54,15 @@ namespace LogroconTest.Controllers
         public ActionResult<OfficerData> GetOfficerByID(int id)
         {
             var session = Guid.NewGuid().ToString();
-
             if (id < 0)
                 return BadRequest(Utils.GetResponse(session, "Id должен быть положительным числом"));
 
-            var result = workdb.GetOfficerInfoByID(id, session);
+            OfficerData result = null;
+            result = workdb.GetOfficerInfoByID(id, session);
 
             if (result == null || result.ID < 0)
                 return NotFound(Utils.GetResponse(session));
-
+            
             return Ok(result);
         }
 
@@ -80,10 +80,9 @@ namespace LogroconTest.Controllers
             if (value == null || string.IsNullOrWhiteSpace(value.Name))
                 return BadRequest(Utils.GetResponse(session));
             
-            var result   = workdb.CreateOfficerInfo(value, session);
-            var outValue = workdb.GetOfficerInfoByID(result, session);
+            var result = workdb.CreateOfficerInfo(value, session);
 
-            return CreatedAtAction(nameof(GetOfficerByID), new { id = result }, outValue);
+            return CreatedAtAction(nameof(GetOfficerByID), new { id = result }, result);
         }
 
         /// <summary>

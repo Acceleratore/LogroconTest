@@ -18,9 +18,9 @@ namespace LogroconTest.Controllers
     {
         ModelDataBase workdb;
 
-        public PostInfoController(IOptions<Settings> setting)
+        public PostInfoController(IOptions<Settings> setting, ICacheStore cache)
         {
-            workdb = new ModelDataBase(setting);
+            workdb = new ModelDataBase(setting, cache);
         }
 
         /// <summary>
@@ -79,10 +79,9 @@ namespace LogroconTest.Controllers
             if (value == null || string.IsNullOrWhiteSpace(value.PostsName) || (value.Grade < 1 || value.Grade > 15))
                 return BadRequest(Utils.GetResponse(session, "Неверные данные"));
 
-            var result   = workdb.CreatePost(value, session);
-            var outValue = workdb.GetPost(result, session);
+            var result = workdb.CreatePost(value, session);
 
-            return CreatedAtAction(nameof(GetPostByID), new { id = result }, outValue);
+            return CreatedAtAction(nameof(GetPostByID), new { id = result }, result);
         }
 
         /// <summary>
@@ -103,7 +102,7 @@ namespace LogroconTest.Controllers
 
             var result = workdb.UpdatePost(id, value, session);
             if (!result)
-                NotFound(Utils.GetResponse(session, "Нет объектов для обновления"));
+                return NotFound(Utils.GetResponse(session, "Нет объектов для обновления"));
 
             return Ok(Utils.GetResponse(session));
         }
