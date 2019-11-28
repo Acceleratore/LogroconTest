@@ -76,7 +76,10 @@ namespace LogroconTest.Controllers
         {
             var session = Guid.NewGuid().ToString();
 
-            if (value == null || string.IsNullOrWhiteSpace(value.PostsName) || (value.Grade < 1 || value.Grade > 15))
+            if (value.Grade < 1 || value.Grade > 15)
+                return BadRequest(Utils.GetResponse(session, "Грейд должности должен быть в пределах от 1 до 15."));
+
+            if (value == null || string.IsNullOrWhiteSpace(value.PostsName))
                 return BadRequest(Utils.GetResponse(session, "Неверные данные"));
 
             var result = workdb.CreatePost(value, session);
@@ -97,7 +100,10 @@ namespace LogroconTest.Controllers
         {
             var session = Guid.NewGuid().ToString();
 
-            if (value == null || string.IsNullOrWhiteSpace(value.PostsName) || id < 0 || (value.Grade < 1 || value.Grade > 15))
+            if (value.Grade < 1 || value.Grade > 15)
+                return BadRequest(Utils.GetResponse(session, "Грейд должности должен быть в пределах от 1 до 15."));
+
+            if (value == null || string.IsNullOrWhiteSpace(value.PostsName) || id < 0)
                 return BadRequest(Utils.GetResponse(session, "Неверные данные"));
 
             var result = workdb.UpdatePost(id, value, session);

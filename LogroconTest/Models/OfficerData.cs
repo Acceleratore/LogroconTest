@@ -14,7 +14,7 @@ namespace LogroconTest.Models
         public string PostsName { get; set; }
         
         /// <summary>
-        /// Грейд должности
+        /// Грейд должности. Число от 1 до 15
         /// </summary>
         public int Grade { get; set; }
     }
