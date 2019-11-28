@@ -47,8 +47,6 @@ namespace LogroconTest.Helpers
                 _posts = new Dictionary<int, PostData>();
                 _lockerPost = new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
             }
-            
-            _locker = new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
         }
 
         public OfficerData GetOfficer(int id, string sessionn)
