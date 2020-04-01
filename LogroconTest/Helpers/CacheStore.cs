@@ -14,8 +14,6 @@ namespace LogroconTest.Helpers
         void RemoveOfficer(int id, string session);
 
         void EditOfficer(int id, OfficerDataIn value, string session);
-
-        void UpdateOfficersPost(int Id, string session);
         
         PostData GetPost(int Id, string session);
 
@@ -49,6 +47,12 @@ namespace LogroconTest.Helpers
             }
         }
 
+        /// <summary>
+        /// Получить информацию о сотруднике по ID из кэша
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="sessionn"></param>
+        /// <returns></returns>
         public OfficerData GetOfficer(int id, string sessionn)
         {
             _locker.EnterReadLock();
@@ -67,6 +71,12 @@ namespace LogroconTest.Helpers
             }
         }
 
+        /// <summary>
+        /// Добавление информации о сотруднике в кэш
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="value"></param>
+        /// <param name="session"></param>
         public void AddOfficer(int id, OfficerData value, string session)
         {
             if (value == null || _officer.ContainsKey(id))
@@ -85,6 +95,11 @@ namespace LogroconTest.Helpers
             }
         }
 
+        /// <summary>
+        /// Удаление информации о сотруднике из кэша
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="session"></param>
         public void RemoveOfficer(int id, string session)
         {
             if (!_officer.ContainsKey(id))
@@ -101,6 +116,12 @@ namespace LogroconTest.Helpers
             }
         }
 
+        /// <summary>
+        /// Изменение информации о должности по ID в кэше
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="value"></param>
+        /// <param name="session"></param>
         public void EditOfficer(int id, OfficerDataIn value, string session)
         {
             if (value == null || !_officer.ContainsKey(id))
@@ -120,35 +141,17 @@ namespace LogroconTest.Helpers
             }
         }
 
-        public void UpdateOfficersPost(int Id, string session)
-        {
-            _locker.EnterWriteLock();
-            try
-            {
-                foreach (var officer in _officer)
-                {
-                    foreach (var post in _posts)
-                    {
-                        if (post.Value.ID == Id)
-                        {
-                            post.Value.PostsName = _posts[Id].PostsName;
-                            post.Value.Grade     = _posts[Id].Grade;
-                        }
-                    }
-                }
-                
-            }
-            finally
-            {
-                _locker.ExitWriteLock();
-            }
-        }
-
+        /// <summary>
+        /// Получение информации об должности по ID из кэша
+        /// </summary>
+        /// <param name="Id"></param>
+        /// <param name="session"></param>
+        /// <returns></returns>
         public PostData GetPost(int Id, string session)
         {
             if (!_posts.ContainsKey(Id))
                 return null;
-
+        
             _lockerPost.EnterReadLock();
             try
             {
@@ -206,8 +209,6 @@ namespace LogroconTest.Helpers
 
                 if (value.Grade > 0)
                     _posts[Id].Grade = value.Grade;
-
-                UpdateOfficersPost(Id, session);
             }
             finally
             {

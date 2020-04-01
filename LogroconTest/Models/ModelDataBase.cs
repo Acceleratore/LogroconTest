@@ -31,13 +31,12 @@ namespace LogroconTest.Models
 
             try
             {
-
                 using (var _connection = new NpgsqlConnection(MainConnection.GetConnectionString()))
                 {
                     _connection.Open();
 
                     var sqlQuery = string.Format(@"select ID, FirstName, Surname, Patronymic,  BirthDate
-                                                 from {0}Officer", MainConnection.GetSQLNamespace());
+                                                     from {0}Officer", MainConnection.GetSQLNamespace());
 
                     using (var _postgreCommand = new NpgsqlCommand(sqlQuery, _connection))
                     using (var _reader = _postgreCommand.ExecuteReader())
@@ -257,7 +256,7 @@ namespace LogroconTest.Models
                 try
                 {
                     var sqlQueryOfficer = string.Format(@"UPDATE {0}officer SET firstname = @firstname, surname = @surname, patronymic = @patronymic, birthdate = @birthdate
-                                                          WHERE id = @id RETURNING ID", MainConnection.GetSQLNamespace());
+                                                           WHERE id = @id RETURNING ID", MainConnection.GetSQLNamespace());
 
                     using (var _postgreCommand = new NpgsqlCommand(sqlQueryOfficer, _connection))
                     {
@@ -383,9 +382,9 @@ namespace LogroconTest.Models
                     _connection.Open();
 
                     var sqlQuery = string.Format(@"select posts.ID, posts.Namepost, posts.grade
-                                                 from {0}Posts posts
-                                                 join logrocon.Officer_to_posts as link ON link.ID_post = posts.ID
-                                                where link.ID_Officer = @id", MainConnection.GetSQLNamespace());
+                                                     from {0}Posts posts
+                                                     join logrocon.Officer_to_posts as link ON link.ID_post = posts.ID
+                                                    where link.ID_Officer = @id", MainConnection.GetSQLNamespace());
 
                     using (var _postgreCommand = new NpgsqlCommand(sqlQuery, _connection))
                     {
@@ -546,7 +545,7 @@ namespace LogroconTest.Models
                                                   flagname && flaggrade ? "," : string.Empty);
 
                     var sqlQueryPosts = string.Format(@"UPDATE {0}posts SET {1}
-                                                    WHERE id = @id",
+                                                         WHERE id = @id",
                                                         MainConnection.GetSQLNamespace(), sqlValue);
 
                     using (var _postgreCommand = new NpgsqlCommand(sqlQueryPosts, _connection))

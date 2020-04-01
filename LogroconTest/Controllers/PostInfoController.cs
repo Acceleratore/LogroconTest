@@ -76,11 +76,12 @@ namespace LogroconTest.Controllers
         {
             var session = Guid.NewGuid().ToString();
 
+            if (value == null || string.IsNullOrWhiteSpace(value.PostsName))
+                return BadRequest(Utils.GetResponse(session, "Неверные данные"));
+
             if (value.Grade < 1 || value.Grade > 15)
                 return BadRequest(Utils.GetResponse(session, "Грейд должности должен быть в пределах от 1 до 15."));
 
-            if (value == null || string.IsNullOrWhiteSpace(value.PostsName))
-                return BadRequest(Utils.GetResponse(session, "Неверные данные"));
 
             var result = workdb.CreatePost(value, session);
 
@@ -99,12 +100,12 @@ namespace LogroconTest.Controllers
         public ActionResult Put(int id, [FromBody] PostDataIn value)
         {
             var session = Guid.NewGuid().ToString();
+            
+            if (value == null || id < 0 || string.IsNullOrWhiteSpace(value.PostsName))
+                return BadRequest(Utils.GetResponse(session, "Неверные данные"));
 
             if (value.Grade < 1 || value.Grade > 15)
                 return BadRequest(Utils.GetResponse(session, "Грейд должности должен быть в пределах от 1 до 15."));
-
-            if (value == null || string.IsNullOrWhiteSpace(value.PostsName) || id < 0)
-                return BadRequest(Utils.GetResponse(session, "Неверные данные"));
 
             var result = workdb.UpdatePost(id, value, session);
             if (!result)
@@ -132,7 +133,7 @@ namespace LogroconTest.Controllers
             // Имеется связь с сотрудником, удаление невозможно
             var link = workdb.GetLinkOfficerPosts(id, session);
             if (link != null && link.Count > 0)
-                return Conflict(Utils.GetResponse(session, string.Format("Данная должность имеет связь с сотрудниками ID = {0}. Удаление невозможно, необходимо убрать связь указанных сотрудников с должностью.", string.Join(',', link.ToArray())))); // Не уверен, что код верный
+                return Conflict(Utils.GetResponse(session, string.Format("Данная должность имеет связь с сотрудниками ID = {0}. Удаление невозможно, необходимо убрать связь указанных сотрудников с должностью.", string.Join(',', link.ToArray()))));
 
             workdb.DeletePost(id, session);
 
