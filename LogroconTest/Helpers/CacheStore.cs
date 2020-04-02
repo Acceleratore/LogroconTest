@@ -7,7 +7,7 @@ namespace LogroconTest.Helpers
 {
     public interface ICacheStore
     {
-        OfficerData GetOfficer(int id, string sessionn);
+        OfficerData GetOfficer(int id, string session);
 
         void AddOfficer(int id, OfficerData value, string session);
 
@@ -51,9 +51,9 @@ namespace LogroconTest.Helpers
         /// Получить информацию о сотруднике по ID из кэша
         /// </summary>
         /// <param name="id"></param>
-        /// <param name="sessionn"></param>
+        /// <param name="session"></param>
         /// <returns></returns>
-        public OfficerData GetOfficer(int id, string sessionn)
+        public OfficerData GetOfficer(int id, string session)
         {
             _locker.EnterReadLock();
             try
@@ -202,6 +202,7 @@ namespace LogroconTest.Helpers
                 return;
 
             _lockerPost.EnterWriteLock();
+            _locker.EnterWriteLock();
             try
             {
                 if (!string.IsNullOrWhiteSpace(value.PostsName))
@@ -213,6 +214,7 @@ namespace LogroconTest.Helpers
             finally
             {
                 _lockerPost.ExitWriteLock();
+                _locker.ExitWriteLock();
             }
         }
         

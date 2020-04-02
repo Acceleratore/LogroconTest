@@ -16,8 +16,8 @@ namespace LogroconTest.Models
         public ModelDataBase(IOptions<Settings> setting, ICacheStore cache)
         {
             MainConnection = setting.Value.MainDBConnection;
-            _setting = setting;
-            _cache = cache;
+            _setting       = setting;
+            _cache         = cache;
         }
 
         /// <summary>
@@ -75,24 +75,30 @@ namespace LogroconTest.Models
         {
             OfficerData result = null;
 
-            try
+            if (_setting.Value.ChachedEmployee)
             {
-
-                if (_setting.Value.ChachedEmployee)
+                try
                 {
                     result = _cache.GetOfficer(ID, session);
+
+                    if (result != null)
+                        return result;
                 }
+                catch(Exception e)
+                {
+                    // Логгирование ошибки, работа продолжится через БД
+                }
+            }
 
-                if (result != null)
-                    return result;
-
+            try
+            {
                 using (var _connection = new NpgsqlConnection(MainConnection.GetConnectionString()))
                 {
                     _connection.Open();
 
                     var sqlQuery = string.Format(@"select ID, FirstName, Surname, Patronymic,  BirthDate
-                                                 from {0}Officer
-                                                where ID = @id", MainConnection.GetSQLNamespace());
+                                                     from {0}Officer
+                                                    where ID = @id", MainConnection.GetSQLNamespace());
 
                     using (var _postgreCommand = new NpgsqlCommand(sqlQuery, _connection))
                     {
@@ -115,14 +121,23 @@ namespace LogroconTest.Models
                         }
                     }
                 }
-
-                if (_setting.Value.ChachedEmployee)
+            }
+            catch (Exception e)
+            {
+                throw new Exception("Ошибка получения информации из БД о сотруднике с ID = " + ID, e);
+            }
+            
+            if (_setting.Value.ChachedEmployee)
+            {
+                try
                 {
                     _cache.AddOfficer(ID, result, session);
                 }
-            } catch (Exception e)
-            {
-                throw new Exception("Ошибка получения информации о сотрудники с ID = " + ID, e);
+                catch(Exception e)
+                {
+                    // Логгирование ошибки, работа продолжится через БД
+                    //throw new Exception("Ошибка добавления информации из кэша о сотруднике с ID = " + ID, e);
+                }
             }
 
             return result;
@@ -136,9 +151,9 @@ namespace LogroconTest.Models
         /// <returns></returns>
         public OfficerData CreateOfficerInfo(OfficerDataIn data, string session)
         {
-            var id = -1;
+            var id     = -1;
             var result = new OfficerData(data);
-            var posts = new List<PostData>();
+            var posts  = new List<PostData>();
 
             using (var _connection = new NpgsqlConnection(MainConnection.GetConnectionString()))
             {
@@ -149,7 +164,8 @@ namespace LogroconTest.Models
                 try
                 {
                     var sqlQueryOfficer = string.Format(@"INSERT INTO {0}Officer (FirstName, Surname, Patronymic, BirthDate)
-                                                               VALUES (@firstname, @surname, @patronymic, @birthdate) RETURNING ID", MainConnection.GetSQLNamespace());
+                                                               VALUES (@firstname, @surname, @patronymic, @birthdate)
+                                                            RETURNING ID", MainConnection.GetSQLNamespace());
                     
                     using (var _postgreCommand = new NpgsqlCommand(sqlQueryOfficer, _connection))
                     {
@@ -171,19 +187,27 @@ namespace LogroconTest.Models
 
                     result.ID    = id;
                     result.Posts = posts;
-
-                    if (_setting.Value.ChachedEmployee)
-                    {
-                        _cache.AddOfficer(id, result, session);
-                    }
                 }
                 catch(Exception e)
                 {
                     _transaction.Rollback();
-                    throw new Exception("Ошибка добавления сотрудника.", e);
+                    throw new Exception("Ошибка добавления сотрудника в БД.", e);
                 }
             }
 
+            if (_setting.Value.ChachedEmployee)
+            {
+                try
+                {
+                    _cache.AddOfficer(id, result, session);
+                }
+                catch (Exception e)
+                {
+                    // Логгирование ошибки, работа продолжится через БД
+                    //throw new Exception("Ошибка добавления сотрудника в кэш.", e);
+                }
+            }
+            
             return result;
         }
 
@@ -198,7 +222,8 @@ namespace LogroconTest.Models
         public int CreateOfficerPost(int id_off, int id_post, string session, NpgsqlConnection _connection)
         {
             var result = -1;
-            var sqlQueryPosts = string.Format(@"INSERT INTO {0}Officer_to_posts (ID_Officer, ID_Post) VALUES (@id_off, @id_post)", MainConnection.GetSQLNamespace());
+            var sqlQueryPosts = string.Format(@"INSERT INTO {0}Officer_to_posts (ID_Officer, ID_Post)
+                                                     VALUES (@id_off, @id_post)", MainConnection.GetSQLNamespace());
 
             try
             {
@@ -210,7 +235,8 @@ namespace LogroconTest.Models
                     _postgreCommand.ExecuteNonQuery();
                 }
 
-            } catch (Exception e)
+            }
+            catch (Exception e)
             {
                 throw new Exception("Ошибка добавления должности для сотрудника с ID = " + id_post, e);
             }
@@ -229,13 +255,20 @@ namespace LogroconTest.Models
         {
             var result = -1;
             
-            using (var _connection = new NpgsqlConnection(MainConnection.GetConnectionString()))
+            try
             {
-                _connection.Open();
+                using (var _connection = new NpgsqlConnection(MainConnection.GetConnectionString()))
+                {
+                    _connection.Open();
 
-                result = CreateOfficerPost(id_off, id_post, session, _connection);
+                    result = CreateOfficerPost(id_off, id_post, session, _connection);
+                }
             }
-
+            catch(Exception e)
+            {
+                throw new Exception("Ошибка добавления должности для сотрудника с ID = " + id_post, e);
+            }
+            
             return result;
         }
 
@@ -247,51 +280,67 @@ namespace LogroconTest.Models
         /// <param name="session"></param>
         public void UpdateOfficer(int id, OfficerDataIn data, string session)
         {
-            using (var _connection = new NpgsqlConnection(MainConnection.GetConnectionString()))
+            try
             {
-                _connection.Open();
+                using (var _connection = new NpgsqlConnection(MainConnection.GetConnectionString()))
+                {
+                    _connection.Open();
 
-                var _transaction = _connection.BeginTransaction();
+                    var _transaction = _connection.BeginTransaction();
 
+                    try
+                    {
+                        var sqlQueryOfficer = string.Format(@"UPDATE {0}officer SET firstname = @firstname, surname = @surname, patronymic = @patronymic, birthdate = @birthdate
+                                                               WHERE id = @id
+                                                           RETURNING ID", MainConnection.GetSQLNamespace());
+
+                        using (var _postgreCommand = new NpgsqlCommand(sqlQueryOfficer, _connection))
+                        {
+                            _postgreCommand.Parameters.AddWithValue("id", id);
+                            _postgreCommand.Parameters.AddWithValue("firstname", data.Name);
+                            _postgreCommand.Parameters.AddWithValue("surname", Utils.NoNullValue(data.SurName));
+                            _postgreCommand.Parameters.AddWithValue("patronymic", Utils.NoNullValue(data.Patronymic));
+                            _postgreCommand.Parameters.AddWithValue("birthdate", data.BirthDate);
+
+                            _postgreCommand.ExecuteNonQuery();
+                        }
+
+                        DeleteLink(id, session, _connection);
+
+                        if (data.Posts != null && data.Posts.Count() > 0)
+                        {
+                            foreach (var post in data.Posts)
+                            {
+                                CreateOfficerPost(id, post.ID, session, _connection);
+                            }
+                        }
+
+                        _transaction.Commit();
+                    }
+                    catch (Exception e)
+                    {
+                        _transaction.Rollback();
+                        throw;
+                    }
+                }
+            }
+            catch(Exception e)
+            {
+                throw new Exception("Ошибка обновления данных сотрудника в БД.", e);
+            }
+
+            if (_setting.Value.ChachedEmployee)
+            {
                 try
                 {
-                    var sqlQueryOfficer = string.Format(@"UPDATE {0}officer SET firstname = @firstname, surname = @surname, patronymic = @patronymic, birthdate = @birthdate
-                                                           WHERE id = @id RETURNING ID", MainConnection.GetSQLNamespace());
-
-                    using (var _postgreCommand = new NpgsqlCommand(sqlQueryOfficer, _connection))
-                    {
-                        _postgreCommand.Parameters.AddWithValue("id",         id);
-                        _postgreCommand.Parameters.AddWithValue("firstname",  data.Name);
-                        _postgreCommand.Parameters.AddWithValue("surname",    Utils.NoNullValue(data.SurName));
-                        _postgreCommand.Parameters.AddWithValue("patronymic", Utils.NoNullValue(data.Patronymic));
-                        _postgreCommand.Parameters.AddWithValue("birthdate",  data.BirthDate);
-
-                        _postgreCommand.ExecuteNonQuery();
-                    }
-
-                    DeleteLink(id, session, _connection);
-
-                    if (data.Posts != null && data.Posts.Count() > 0)
-                    {
-                        foreach (var post in data.Posts)
-                        {
-                            CreateOfficerPost(id, post.ID, session, _connection);
-                        }
-                    }
-
-                    _transaction.Commit();
-
-                    if (_setting.Value.ChachedEmployee)
-                    {
-                        _cache.EditOfficer(id, data, session);
-                    }
+                    _cache.EditOfficer(id, data, session);
                 }
-                catch (Exception e)
+                catch(Exception e)
                 {
-                    _transaction.Rollback();
-                    throw new Exception("Ошибка обновления данных сотрудника.", e);
+                    // Логгирование ошибки, работа продолжится через БД
+                    // Необходимо изменить состояние кэша не невалидное, чтобы избежать чтение из неверного кэша
+                    //throw new Exception("Ошибка обновления данных сотрудника в кэше.", e);
                 }
-
             }
         }
 
@@ -346,22 +395,31 @@ namespace LogroconTest.Models
                         }
 
                         _transaction.Commit();
-
-                        if (_setting.Value.ChachedEmployee)
-                        {
-                            _cache.RemoveOfficer(id, session);
-                        }
-
                     }
                     catch (Exception e)
                     {
                         _transaction.Rollback();
-                        throw new Exception("Ошибка удаления сотрудника с ID = " + id, e);
+                        throw new Exception("Ошибка удаления из БД сотрудника с ID = " + id, e);
                     }
                 }
-            } catch (Exception e)
+            }
+            catch (Exception e)
             {
-                throw new Exception("Ошибка удаления сотрудника с ID = " + id, e);
+                throw new Exception("Ошибка удаления из БД сотрудника с ID = " + id, e);
+            }
+
+            if (_setting.Value.ChachedEmployee)
+            {
+                try
+                {
+                    _cache.RemoveOfficer(id, session);
+                }
+                catch (Exception e)
+                {
+                    // Логгирование ошибки, работа продолжится через БД
+                    // Необходимо изменить состояние кэша не невалидное, чтобы избежать чтение из неверного кэша
+                    //throw new Exception("Ошибка удаления из кэша сотрудника с ID = " + id, e);
+                }
             }
         }
 
@@ -383,7 +441,7 @@ namespace LogroconTest.Models
 
                     var sqlQuery = string.Format(@"select posts.ID, posts.Namepost, posts.grade
                                                      from {0}Posts posts
-                                                     join logrocon.Officer_to_posts as link ON link.ID_post = posts.ID
+                                                     join {0}Officer_to_posts as link ON link.ID_post = posts.ID
                                                     where link.ID_Officer = @id", MainConnection.GetSQLNamespace());
 
                     using (var _postgreCommand = new NpgsqlCommand(sqlQuery, _connection))
@@ -400,20 +458,32 @@ namespace LogroconTest.Models
                                 post.PostsName = _reader["Namepost"].ToString();
                                 post.Grade     = Convert.ToInt32(_reader["grade"]);
                                 
-                                if (_setting.Value.ChachedPosts)
-                                {
-                                    _cache.AddPost(post.ID, post, session);
-                                }
-
                                 result.Add(post);
                             }
                         }
                     }
                 }
 
-            } catch (Exception e)
+            }
+            catch (Exception e)
             {
-                throw new Exception("Ошибка получения должностей сотрудника с ID = " + id, e);
+                throw new Exception("Ошибка получения должностей из БД для сотрудника с ID = " + id, e);
+            }
+            
+            if (_setting.Value.ChachedPosts && result.Count > 0)
+            {
+                try
+                {
+                    foreach (var post in result)
+                    {
+                        _cache.AddPost(post.ID, post, session);
+                    }
+                }
+                catch(Exception e)
+                {
+                    // Логгирование ошибки, работа продолжится через БД
+                    // Необходимо изменить состояние кэша не невалидное, чтобы избежать чтение из неверного кэша
+                }
             }
 
             return result.Count == 0 ? null : result;
@@ -435,7 +505,7 @@ namespace LogroconTest.Models
                     _connection.Open();
 
                     var sqlQuery = string.Format(@"SELECT id, namepost, grade
-                                                 FROM {0}posts", MainConnection.GetSQLNamespace());
+                                                     FROM {0}posts", MainConnection.GetSQLNamespace());
 
                     using (var _postgreCommand = new NpgsqlCommand(sqlQuery, _connection))
                     {
@@ -454,10 +524,12 @@ namespace LogroconTest.Models
                         }
                     }
                 }
-            } catch (Exception e)
+            }
+            catch (Exception e)
             {
                 throw new Exception("Ошибка получения списка должностей ", e);
             }
+
             return result;
         }
 
@@ -470,24 +542,32 @@ namespace LogroconTest.Models
         public PostData GetPost(int id, string session)
         {
             PostData result = null;
-
-            try
+            
+            if (_setting.Value.ChachedPosts)
             {
-                if (_setting.Value.ChachedPosts)
+                try
                 {
                     result = _cache.GetPost(id, session);
-                }
 
-                if (result != null)
-                    return result;
+                    if (result != null)
+                        return result;
+                }
+                catch(Exception e)
+                {
+                    // Логгирование ошибки, работа продолжится через БД
+                }
+            }
+            
+            try
+            {
 
                 using (var _connection = new NpgsqlConnection(MainConnection.GetConnectionString()))
                 {
                     _connection.Open();
 
                     var sqlQuery = string.Format(@"SELECT namepost, grade
-                                                 FROM {0}posts
-                                                WHERE id = @id", MainConnection.GetSQLNamespace());
+                                                     FROM {0}posts
+                                                    WHERE id = @id", MainConnection.GetSQLNamespace());
 
                     using (var _postgreCommand = new NpgsqlCommand(sqlQuery, _connection))
                     {
@@ -506,15 +586,23 @@ namespace LogroconTest.Models
                         }
                     }
                 }
-
-                if (_setting.Value.ChachedPosts)
+                
+            }
+            catch (Exception e)
+            {
+                throw new Exception("Ошибка получения должности из БД с ID = " + id, e);
+            }
+            
+            if (_setting.Value.ChachedPosts)
+            {
+                try
                 {
                     _cache.AddPost(id, result, session);
                 }
-
-            } catch (Exception e)
-            {
-                throw new Exception("Ошибка получения должности с ID = " + id, e);
+                catch
+                {
+                    // Логгирование ошибки, работа продолжится через БД
+                }
             }
 
             return result;
@@ -529,7 +617,7 @@ namespace LogroconTest.Models
         /// <returns></returns>
         public bool UpdatePost(int id, PostDataIn data, string session)
         {
-            var result = false;
+            var result    = false;
             var flagname  = !string.IsNullOrWhiteSpace(data.PostsName);
             var flaggrade = data.Grade != 0;
 
@@ -560,15 +648,22 @@ namespace LogroconTest.Models
 
                         result = _postgreCommand.ExecuteReader().HasRows;
                     }
-
-                    if (_setting.Value.ChachedPosts)
-                    {
-                        _cache.EditPost(id, data, session);
-                    }
                 }
             } catch (Exception e)
             {
                 throw new Exception("Ошибка обновления должности с ID = " + id, e);
+            }
+            
+            if (_setting.Value.ChachedPosts)
+            {
+                try
+                {
+                    _cache.EditPost(id, data, session);
+                }
+                catch
+                {
+                    // Логгирование ошибки, работа продолжится через БД
+                }
             }
 
             return result;
@@ -603,18 +698,25 @@ namespace LogroconTest.Models
                 }
 
                 result.ID = id;
-                if (_setting.Value.ChachedPosts)
+            }
+            catch (Exception e)
+            {
+                throw new Exception("Ошибка создания должности с ID = " + id, e);
+            }
+            
+            if (_setting.Value.ChachedPosts)
+            {
+                try
                 {
                     _cache.AddPost(id, result, session);
                 }
-
-            } catch (Exception e)
-            {
-                throw new Exception("Ошибка изменения должности с ID = " + id, e);
+                catch(Exception e)
+                {
+                    // Логгирование ошибки, работа продолжится через БД
+                }
             }
 
             return result;
-            ;
         }
 
         /// <summary>
@@ -638,16 +740,23 @@ namespace LogroconTest.Models
                         _postgreCommand.ExecuteNonQuery();
                     }
                 }
-
-                if (_setting.Value.ChachedPosts)
-                {
-                    _cache.RemovePost(id, session);
-                }
-
             }
             catch (Exception e)
             {
                 throw new Exception("Ошибка должности с ID = " + id, e);
+            }
+            
+            if (_setting.Value.ChachedPosts)
+            {
+                try
+                {
+                    _cache.RemovePost(id, session);
+                }
+                catch(Exception e)
+                {
+                    // Логгирование ошибки, работа продолжится через БД
+                    // Необходимо изменить состояние кэша не невалидное, чтобы избежать чтение из неверного кэша
+                }
             }
         }
 
@@ -667,8 +776,8 @@ namespace LogroconTest.Models
                     _connection.Open();
 
                     var sqlQuery = string.Format(@"SELECT id_officer
-                                                 FROM {0}officer_to_posts
-                                                WHERE id_post = @id", MainConnection.GetSQLNamespace());
+                                                     FROM {0}officer_to_posts
+                                                    WHERE id_post = @id", MainConnection.GetSQLNamespace());
 
                     using (var _postgreCommand = new NpgsqlCommand(sqlQuery, _connection))
                     {
