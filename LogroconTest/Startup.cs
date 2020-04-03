@@ -33,6 +33,7 @@ namespace LogroconTest
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
+            services.AddMvc().AddXmlDataContractSerializerFormatters();
 
             services.Configure<Settings>(option =>
             {
@@ -46,7 +47,7 @@ namespace LogroconTest
             });
 
             services.AddSingleton<ICacheStore>(new CacheStore(Configuration.GetSection("Chached").GetValue<bool>("Employee"), Configuration.GetSection("Chached").GetValue<bool>("Post")));
-
+            
             services.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc("v1", new Info
@@ -81,7 +82,7 @@ namespace LogroconTest
             
             app.UseHttpsRedirection();
             app.UseMvc();
-
+            
             app.UseSwagger();
             app.UseSwaggerUI(c =>
             {

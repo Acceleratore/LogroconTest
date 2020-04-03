@@ -5,6 +5,7 @@ using LogroconTest.Helpers;
 using LogroconTest.Models;
 using Microsoft.Extensions.Options;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 
 namespace LogroconTest.Controllers
 {
@@ -12,6 +13,7 @@ namespace LogroconTest.Controllers
     /// API для работы с данными сотрудников
     /// </summary>
     [Route("api/[controller]")]
+    [Produces("application/json", "application/xml")]
     [ApiController]
     public class EmployeeController : ControllerBase
     {

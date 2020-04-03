@@ -13,6 +13,7 @@ namespace LogroconTest.Controllers
     /// API для должностей сотрудников
     /// </summary>
     [Route("api/[controller]")]
+    [Produces("application/json", "application/xml")]
     [ApiController]
     public class PostInfoController : ControllerBase
     {
